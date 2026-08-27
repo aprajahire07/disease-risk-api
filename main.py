@@ -4,10 +4,12 @@ warnings.filterwarnings('ignore')
 import os
 import sys
 
-# Scikit-learn unpickle compatibility fix
+# Compatibility mapping for scikit-learn loss classes across versions
 try:
+    import sklearn._loss.loss as skl_loss
     import sklearn._loss
-    sys.modules['_loss'] = sklearn._loss
+    if not hasattr(sklearn._loss, 'CyHalfBinomialLoss') and hasattr(skl_loss, 'CyHalfBinomialLoss'):
+        sklearn._loss.CyHalfBinomialLoss = skl_loss.CyHalfBinomialLoss
 except Exception:
     pass
 
@@ -39,7 +41,7 @@ m_stroke = hf_hub_download(repo_id=HF_REPO_ID, filename="stroke_model.pkl", toke
 m_htn = hf_hub_download(repo_id=HF_REPO_ID, filename="hypertension_model.pkl", token=HF_TOKEN)
 m_meta = hf_hub_download(repo_id=HF_REPO_ID, filename="metabolic_model.pkl", token=HF_TOKEN)
 
-# Load 5 Machine Learning Models
+# Load 5 Machine Learning Models safely
 heart_model = joblib.load(m_heart)
 diabetes_model = joblib.load(m_diab)
 stroke_model = joblib.load(m_stroke)
