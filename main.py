@@ -2,6 +2,15 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import os
+import sys
+
+# Scikit-learn unpickle compatibility fix
+try:
+    import sklearn._loss
+    sys.modules['_loss'] = sklearn._loss
+except Exception:
+    pass
+
 import joblib
 import pandas as pd
 import numpy as np
@@ -21,22 +30,21 @@ app.add_middleware(
 )
 
 HF_REPO_ID = "celestial999/disease-model"
-# Render environment variable se token uthayega
-HF_TOKEN = os.getenv("HF_TOKEN")
+HF_TOKEN = os.getenv("HF_TOKEN") or None
 
-print("⏳ Downloading 5 trained models with Authentication...")
-m_heart_path = hf_hub_download(repo_id=HF_REPO_ID, filename="heart_model.pkl", token=HF_TOKEN)
-m_diab_path = hf_hub_download(repo_id=HF_REPO_ID, filename="diabetes_model.pkl", token=HF_TOKEN)
-m_stroke_path = hf_hub_download(repo_id=HF_REPO_ID, filename="stroke_model.pkl", token=HF_TOKEN)
-m_htn_path = hf_hub_download(repo_id=HF_REPO_ID, filename="hypertension_model.pkl", token=HF_TOKEN)
-m_meta_path = hf_hub_download(repo_id=HF_REPO_ID, filename="metabolic_model.pkl", token=HF_TOKEN)
+print("⏳ Downloading 5 trained models from Hugging Face...")
+m_heart = hf_hub_download(repo_id=HF_REPO_ID, filename="heart_model.pkl", token=HF_TOKEN)
+m_diab = hf_hub_download(repo_id=HF_REPO_ID, filename="diabetes_model.pkl", token=HF_TOKEN)
+m_stroke = hf_hub_download(repo_id=HF_REPO_ID, filename="stroke_model.pkl", token=HF_TOKEN)
+m_htn = hf_hub_download(repo_id=HF_REPO_ID, filename="hypertension_model.pkl", token=HF_TOKEN)
+m_meta = hf_hub_download(repo_id=HF_REPO_ID, filename="metabolic_model.pkl", token=HF_TOKEN)
 
 # Load 5 Machine Learning Models
-heart_model = joblib.load(m_heart_path)
-diabetes_model = joblib.load(m_diab_path)
-stroke_model = joblib.load(m_stroke_path)
-hypertension_model = joblib.load(m_htn_path)
-metabolic_model = joblib.load(m_meta_path)
+heart_model = joblib.load(m_heart)
+diabetes_model = joblib.load(m_diab)
+stroke_model = joblib.load(m_stroke)
+hypertension_model = joblib.load(m_htn)
+metabolic_model = joblib.load(m_meta)
 print("✅ All 5 Production Models Loaded Successfully!")
 
 @app.get("/")
@@ -59,7 +67,6 @@ async def predict_full_suite(request: Request):
     family_hist = [str(x).lower() for x in (body.get('family_history') or [])] if isinstance(body.get('family_history'), list) else [str(body.get('family_history') or '').lower()]
     sugar = str(body.get('blood_sugar') or 'Normal').lower()
 
-    # Feature Parsing
     smoking_num = 1 if any(x in smoking for x in ["regular", "occasional", "yes"]) else 0
     bp_high_num = 1 if any(x in bp for x in ["stage", "elevated", "140", "yes"]) else 0
     sugar_high_num = 1 if any(x in sugar for x in ["high", "elevated", "mg"]) and not ("9" in sugar or "8" in sugar or "normal" in sugar) else 0
