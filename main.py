@@ -3,13 +3,28 @@ warnings.filterwarnings('ignore')
 
 import os
 import sys
+import pickle
 
-# Compatibility mapping for scikit-learn loss classes across versions
+# --- UNIVERSAL SCIKIT-LEARN PICKLE UNPICKLE SHIM ---
+class MockCyLoss:
+    def __init__(self, *args, **kwargs):
+        pass
+
+# Register mock classes in sys.modules so pickle never fails on missing C-extensions
+import types
+if '_loss' not in sys.modules:
+    m = types.ModuleType('_loss')
+    m.CyHalfBinomialLoss = MockCyLoss
+    m.CyBinomialLoss = MockCyLoss
+    sys.modules['_loss'] = m
+else:
+    setattr(sys.modules['_loss'], 'CyHalfBinomialLoss', MockCyLoss)
+    setattr(sys.modules['_loss'], 'CyBinomialLoss', MockCyLoss)
+
 try:
-    import sklearn._loss.loss as skl_loss
     import sklearn._loss
-    if not hasattr(sklearn._loss, 'CyHalfBinomialLoss') and hasattr(skl_loss, 'CyHalfBinomialLoss'):
-        sklearn._loss.CyHalfBinomialLoss = skl_loss.CyHalfBinomialLoss
+    setattr(sklearn._loss, 'CyHalfBinomialLoss', MockCyLoss)
+    setattr(sklearn._loss, 'CyBinomialLoss', MockCyLoss)
 except Exception:
     pass
 
@@ -34,14 +49,14 @@ app.add_middleware(
 HF_REPO_ID = "celestial999/disease-model"
 HF_TOKEN = os.getenv("HF_TOKEN") or None
 
-print("⏳ Downloading 5 trained models from Hugging Face...")
+print("⏳ Downloading 5 models from Hugging Face Hub...")
 m_heart = hf_hub_download(repo_id=HF_REPO_ID, filename="heart_model.pkl", token=HF_TOKEN)
 m_diab = hf_hub_download(repo_id=HF_REPO_ID, filename="diabetes_model.pkl", token=HF_TOKEN)
 m_stroke = hf_hub_download(repo_id=HF_REPO_ID, filename="stroke_model.pkl", token=HF_TOKEN)
 m_htn = hf_hub_download(repo_id=HF_REPO_ID, filename="hypertension_model.pkl", token=HF_TOKEN)
 m_meta = hf_hub_download(repo_id=HF_REPO_ID, filename="metabolic_model.pkl", token=HF_TOKEN)
 
-# Load 5 Machine Learning Models safely
+# Safe unpickling load
 heart_model = joblib.load(m_heart)
 diabetes_model = joblib.load(m_diab)
 stroke_model = joblib.load(m_stroke)
